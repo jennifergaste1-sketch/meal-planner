@@ -1,84 +1,62 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 
-const MealPlanner = () => {
-  // Exemple de planning (déjeuner et dîner uniquement)
-  const [meals] = useState({
-    Lundi: { dejeuner: "Escalope poulet sauce crème pâtes", diner: "Saucisses purée" },
-    Mardi: { dejeuner: "Sandwich jambon dinde fromage fondu", diner: "Steak haché haricots vert" },
-    Mercredi: { dejeuner: "Cordons bleus semoule", diner: "Blans de poulet sauce curry riz" },
-    Jeudi: { dejeuner: "Salade thon maïs tomates oeuf", diner: "Escalope poulet poêlée de légumes" },
-    Vendredi: { dejeuner: "A définir", diner: "A définir" },
-    Samedi: { dejeuner: "A définir", diner: "Pizza maison" },
-    Dimanche: { dejeuner: "A définir", diner: "A définir" },
-  });
+export default function MealPlanner() {
+  // Récupérer les menus depuis le localStorage ou mettre par défaut
+  const savedMeals = JSON.parse(localStorage.getItem("meals")) || {
+    Lundi: { dejeuner: "Poulet rôti", diner: "Soupe de légumes" },
+    Mardi: { dejeuner: "Pâtes bolognaises", diner: "Salade composée" },
+    Mercredi: { dejeuner: "Poisson au four", diner: "Omelette" },
+    Jeudi: { dejeuner: "Quiche lorraine", diner: "Riz sauté" },
+    Vendredi: { dejeuner: "Pizza maison", diner: "Salade grecque" },
+    Samedi: { dejeuner: "Hamburger", diner: "Tacos" },
+    Dimanche: { dejeuner: "Lasagnes", diner: "Gratin dauphinois" },
+  };
 
-  // Générer une liste de courses simple
-  const [shoppingList] = useState([
-    "Poulet",
-    "Carottes",
-    "Pâtes",
-    "Tomates",
-    "Fromage",
-    "Laitue",
-    "Oignons",
-  ]);
+  const [meals, setMeals] = useState(savedMeals);
 
-  // Fonction de partage
-  const shareContent = async () => {
-    let text = "🗓️ Planning repas (Déjeuner & Dîner)\n\n";
+  // Sauvegarder les menus à chaque modification
+  useEffect(() => {
+    localStorage.setItem("meals", JSON.stringify(meals));
+  }, [meals]);
+
+  const handleChange = (day, type, value) => {
+    setMeals((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], [type]: value },
+    }));
+  };
+
+  const shareContent = () => {
+    let text = "📅 Planning repas\n\n";
     for (const [day, meal] of Object.entries(meals)) {
-      text += `${day} : Déj. ${meal.dejeuner} | Dîner ${meal.diner}\n`;
+      text += `${day}: Déj. ${meal.dejeuner} | Dîner ${meal.diner}\n`;
     }
-    text += "\n🛒 Liste de courses :\n" + shoppingList.join(", ");
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "Planning Repas", text });
-      } catch (err) {
-        alert("Partage annulé.");
-      }
-    } else {
-      alert("Le partage n'est pas supporté sur ce navigateur.");
-    }
+    navigator.clipboard.writeText(text)
+      .then(() => alert("Le planning a été copié dans le presse-papier !"))
+      .catch(() => alert("Impossible de copier dans le presse-papier"));
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial" }}>
-      <h1>🍽️ Planning des repas</h1>
-
-      {/* Affichage du planning */}
+    <div>
+      <h1>Planning des repas</h1>
       {Object.entries(meals).map(([day, meal]) => (
-        <div key={day}>
+        <div key={day} style={{ marginBottom: "15px" }}>
           <h2>{day}</h2>
-          <p>Déjeuner : {meal.dejeuner}</p>
-          <p>Dîner : {meal.diner}</p>
+          <label>Déjeuner: </label>
+          <input
+            type="text"
+            value={meal.dejeuner}
+            onChange={(e) => handleChange(day, "dejeuner", e.target.value)}
+          />
+          <label>Dîner: </label>
+          <input
+            type="text"
+            value={meal.diner}
+            onChange={(e) => handleChange(day, "diner", e.target.value)}
+          />
         </div>
       ))}
-
-      <h2>🛒 Liste de courses</h2>
-      <ul>
-        {shoppingList.map((item, index) => (
-          <li key={index}>{item}</li>
-        ))}
-      </ul>
-
-      {/* Bouton de partage */}
-      <button
-        onClick={shareContent}
-        style={{
-          marginTop: "20px",
-          padding: "10px 20px",
-          backgroundColor: "#4CAF50",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          cursor: "pointer",
-        }}
-      >
-        📤 Partager
-      </button>
+      <button onClick={shareContent}>Copier le planning</button>
     </div>
   );
-};
-
-export default MealPlanner;
+}
