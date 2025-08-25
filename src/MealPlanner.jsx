@@ -1,122 +1,153 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+
+const suggestions = [
+  "Pâtes bolognaises",
+  "Salade composée",
+  "Poulet rôti",
+  "Soupe de légumes",
+  "Pizza maison",
+  "Poisson au four",
+  "Curry de légumes",
+  "Burgers maison",
+  "Tacos",
+  "Quiche lorraine",
+];
 
 export default function MealPlanner() {
-  // Récupérer les menus depuis le localStorage ou mettre par défaut
-  const savedMeals = JSON.parse(localStorage.getItem("meals")) || {
-    Lundi: { dejeuner: "Poulet rôti", diner: "Soupe de légumes" },
-    Mardi: { dejeuner: "Pâtes bolognaises", diner: "Salade composée" },
-    Mercredi: { dejeuner: "Poisson au four", diner: "Omelette" },
-    Jeudi: { dejeuner: "Quiche lorraine", diner: "Riz sauté" },
-    Vendredi: { dejeuner: "Pizza maison", diner: "Salade grecque" },
-    Samedi: { dejeuner: "Hamburger", diner: "Tacos" },
-    Dimanche: { dejeuner: "Lasagnes", diner: "Gratin dauphinois" },
-  };
+  // Charger depuis le localStorage au démarrage
+  const [meals, setMeals] = useState(() => {
+    const saved = localStorage.getItem("meals");
+    return saved
+      ? JSON.parse(saved)
+      : {
+          Lundi: { déjeuner: "", dîner: "" },
+          Mardi: { déjeuner: "", dîner: "" },
+          Mercredi: { déjeuner: "", dîner: "" },
+          Jeudi: { déjeuner: "", dîner: "" },
+          Vendredi: { déjeuner: "", dîner: "" },
+          Samedi: { déjeuner: "", dîner: "" },
+          Dimanche: { déjeuner: "", dîner: "" },
+        };
+  });
 
-  const [meals, setMeals] = useState(savedMeals);
+  const [shoppingList, setShoppingList] = useState(() => {
+    const saved = localStorage.getItem("shoppingList");
+    return saved ? JSON.parse(saved) : [];
+  });
 
-  // Liste des courses modifiable
-  const savedShoppingList = JSON.parse(localStorage.getItem("shoppingList")) || [
-    "Tomates",
-    "Poulet",
-    "Pâtes",
-    "Fromage",
-  ];
-  const [shoppingList, setShoppingList] = useState(savedShoppingList);
-  const [newItem, setNewItem] = useState("");
-
-  // Sauvegarder menus et liste de courses à chaque modification
+  // Sauvegarde automatique
   useEffect(() => {
     localStorage.setItem("meals", JSON.stringify(meals));
+  }, [meals]);
+
+  useEffect(() => {
     localStorage.setItem("shoppingList", JSON.stringify(shoppingList));
-  }, [meals, shoppingList]);
+  }, [shoppingList]);
 
-  // Gestion des menus
-  const handleChange = (day, type, value) => {
-    setMeals((prev) => ({
-      ...prev,
-      [day]: { ...prev[day], [type]: value },
-    }));
-  };
-
-  // Gestion de la liste des courses
-  const addItem = () => {
-    if (newItem.trim() !== "") {
-      setShoppingList((prev) => [...prev, newItem.trim()]);
-      setNewItem("");
-    }
-  };
-
-  const removeItem = (index) => {
-    setShoppingList((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const editItem = (index, value) => {
-    setShoppingList((prev) =>
-      prev.map((item, i) => (i === index ? value : item))
-    );
-  };
-
-  // Bouton partager / copier
-  const shareContent = () => {
-    let text = "📅 Planning repas\n\n";
-    for (const [day, meal] of Object.entries(meals)) {
-      text += `${day}: Déj. ${meal.dejeuner} | Dîner ${meal.diner}\n`;
-    }
-    text += "\n🛒 Liste des courses:\n";
-    shoppingList.forEach((item) => {
-      text += `- ${item}\n`;
+  // Modifier un repas
+  const handleMealChange = (day, type, value) => {
+    setMeals({
+      ...meals,
+      [day]: { ...meals[day], [type]: value },
     });
+  };
 
-    navigator.clipboard.writeText(text)
-      .then(() => alert("Le planning et la liste ont été copiés !"))
-      .catch(() => alert("Impossible de copier dans le presse-papier"));
+  // Suggestion aléatoire
+  const suggestMeal = (day, type) => {
+    const random = suggestions[Math.floor(Math.random() * suggestions.length)];
+    handleMealChange(day, type, random);
+  };
+
+  // Gestion de la liste de courses
+  const addItem = () => {
+    const item = prompt("Ajouter un ingrédient :");
+    if (item) {
+      setShoppingList([...shoppingList, { text: item, done: false }]);
+    }
+  };
+
+  const toggleItem = (index) => {
+    const newList = [...shoppingList];
+    newList[index].done = !newList[index].done;
+    setShoppingList(newList);
+  };
+
+  const deleteItem = (index) => {
+    setShoppingList(shoppingList.filter((_, i) => i !== index));
   };
 
   return (
-    <div>
-      <h1>Planning des repas</h1>
-      {Object.entries(meals).map(([day, meal]) => (
-        <div key={day} style={{ marginBottom: "15px" }}>
+    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
+      <h1 style={{ textAlign: "center" }}>🍴 Planificateur de repas</h1>
+
+      {Object.keys(meals).map((day) => (
+        <div
+          key={day}
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: "10px",
+            padding: "10px",
+            marginBottom: "15px",
+            background: "#f9f9f9",
+          }}
+        >
           <h2>{day}</h2>
-          <label>Déjeuner: </label>
-          <input
-            type="text"
-            value={meal.dejeuner}
-            onChange={(e) => handleChange(day, "dejeuner", e.target.value)}
-          />
-          <label>Dîner: </label>
-          <input
-            type="text"
-            value={meal.diner}
-            onChange={(e) => handleChange(day, "diner", e.target.value)}
-          />
+          <div>
+            <strong>Déjeuner :</strong>
+            <input
+              type="text"
+              value={meals[day].déjeuner}
+              onChange={(e) =>
+                handleMealChange(day, "déjeuner", e.target.value)
+              }
+              style={{ marginLeft: "10px" }}
+            />
+            <button onClick={() => suggestMeal(day, "déjeuner")}>
+              🎲 Suggestion
+            </button>
+          </div>
+          <div style={{ marginTop: "5px" }}>
+            <strong>Dîner :</strong>
+            <input
+              type="text"
+              value={meals[day].dîner}
+              onChange={(e) => handleMealChange(day, "dîner", e.target.value)}
+              style={{ marginLeft: "33px" }}
+            />
+            <button onClick={() => suggestMeal(day, "dîner")}>
+              🎲 Suggestion
+            </button>
+          </div>
         </div>
       ))}
 
-      <h2>Liste des courses</h2>
+      <h2>🛒 Liste de courses</h2>
       <ul>
         {shoppingList.map((item, index) => (
-          <li key={index}>
+          <li key={index} style={{ marginBottom: "5px" }}>
             <input
-              type="text"
-              value={item}
-              onChange={(e) => editItem(index, e.target.value)}
+              type="checkbox"
+              checked={item.done}
+              onChange={() => toggleItem(index)}
             />
-            <button onClick={() => removeItem(index)}>Supprimer</button>
+            <span
+              style={{
+                marginLeft: "8px",
+                textDecoration: item.done ? "line-through" : "none",
+              }}
+            >
+              {item.text}
+            </span>
+            <button
+              onClick={() => deleteItem(index)}
+              style={{ marginLeft: "10px", color: "red" }}
+            >
+              ❌
+            </button>
           </li>
         ))}
       </ul>
-      <input
-        type="text"
-        placeholder="Nouvel item"
-        value={newItem}
-        onChange={(e) => setNewItem(e.target.value)}
-      />
-      <button onClick={addItem}>Ajouter</button>
-
-      <div style={{ marginTop: "20px" }}>
-        <button onClick={shareContent}>Copier le planning + liste</button>
-      </div>
+      <button onClick={addItem}>➕ Ajouter un ingrédient</button>
     </div>
   );
 }
