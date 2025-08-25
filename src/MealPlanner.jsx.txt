@@ -1,0 +1,124 @@
+import { useState } from "react";
+
+const days = [
+  "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"
+];
+
+export default function MealPlanner() {
+  const [meals, setMeals] = useState(
+    days.map(day => ({ day, petitdej: "", dej: "", diner: "" }))
+  );
+
+  const [view, setView] = useState("planner");
+  const [checkedItems, setCheckedItems] = useState([]);
+
+  const handleChange = (index, field, value) => {
+    const updatedMeals = [...meals];
+    updatedMeals[index][field] = value;
+    setMeals(updatedMeals);
+  };
+
+  const getShoppingList = () => {
+    const items = meals
+      .flatMap(meal => [meal.dej, meal.diner])
+      .join(",")
+      .split(",")
+      .map(i => i.trim())
+      .filter(i => i.length > 0);
+    return [...new Set(items)];
+  };
+
+  const toggleCheck = (item) => {
+    if (checkedItems.includes(item)) {
+      setCheckedItems(checkedItems.filter(i => i !== item));
+    } else {
+      setCheckedItems([...checkedItems, item]);
+    }
+  };
+
+  const handleShare = () => {
+    const shoppingList = getShoppingList().map(i => `- ${i}`).join("\n");
+    const planning = meals
+      .map(meal => `${meal.day}:\n  🍽️ Déjeuner: ${meal.dej || "-"}\n  🍲 Dîner: ${meal.diner || "-"}`)
+      .join("\n\n");
+    const text = `📅 Mon planning repas + liste de courses:\n\n📋 Planning (Déjeuner & Dîner):\n${planning}\n\n🛒 Liste de courses:\n${shoppingList}`;
+
+    if (navigator.share) {
+      navigator.share({ title: "Planning repas", text });
+    } else {
+      alert("Le partage n'est pas supporté sur cet appareil.");
+    }
+  };
+
+  return (
+    <div className="p-6 max-w-5xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6 text-center">📅 Repas de la semaine</h1>
+
+      <div className="flex justify-center gap-4 mb-6">
+        <button
+          className={`px-4 py-2 rounded-xl shadow ${view==="planner"?"bg-blue-500 text-white":"bg-gray-200"}`}
+          onClick={()=>setView("planner")}
+        >📋 Planning</button>
+        <button
+          className={`px-4 py-2 rounded-xl shadow ${view==="shopping"?"bg-blue-500 text-white":"bg-gray-200"}`}
+          onClick={()=>setView("shopping")}
+        >🛒 Liste de courses</button>
+      </div>
+
+      {view==="planner" ? (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse border rounded-xl shadow-md">
+            <thead>
+              <tr className="bg-gray-200 text-left">
+                <th className="p-3 border">Jour</th>
+                <th className="p-3 border">Petit-déjeuner</th>
+                <th className="p-3 border">Déjeuner</th>
+                <th className="p-3 border">Dîner</th>
+              </tr>
+            </thead>
+            <tbody>
+              {meals.map((meal, index)=>(
+                <tr key={meal.day} className="hover:bg-gray-50">
+                  <td className="p-3 border font-semibold">{meal.day}</td>
+                  <td className="p-3 border">
+                    <input type="text" className="w-full p-2 rounded border"
+                      value={meal.petitdej}
+                      onChange={e=>handleChange(index,"petitdej",e.target.value)}
+                    />
+                  </td>
+                  <td className="p-3 border">
+                    <input type="text" className="w-full p-2 rounded border"
+                      value={meal.dej}
+                      onChange={e=>handleChange(index,"dej",e.target.value)}
+                    />
+                  </td>
+                  <td className="p-3 border">
+                    <input type="text" className="w-full p-2 rounded border"
+                      value={meal.diner}
+                      onChange={e=>handleChange(index,"diner",e.target.value)}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="bg-white p-4 rounded-xl shadow-md">
+          <h2 className="text-xl font-semibold mb-4">🛒 Liste de courses</h2>
+          <ul className="list-none pl-0 mb-4">
+            {getShoppingList().map((item,i)=>(
+              <li key={i} className="mb-2 flex items-center gap-2">
+                <input type="checkbox" checked={checkedItems.includes(item)} onChange={()=>toggleCheck(item)} />
+                <span className={checkedItems.includes(item)?"line-through text-gray-500":""}>{item}</span>
+              </li>
+            ))}
+          </ul>
+          <button onClick={handleShare} className="px-4 py-2 bg-green-500 text-white rounded-xl shadow">
+            📤 Partager
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
