@@ -14,11 +14,23 @@ export default function MealPlanner() {
 
   const [meals, setMeals] = useState(savedMeals);
 
-  // Sauvegarder les menus à chaque modification
+  // Liste des courses modifiable
+  const savedShoppingList = JSON.parse(localStorage.getItem("shoppingList")) || [
+    "Tomates",
+    "Poulet",
+    "Pâtes",
+    "Fromage",
+  ];
+  const [shoppingList, setShoppingList] = useState(savedShoppingList);
+  const [newItem, setNewItem] = useState("");
+
+  // Sauvegarder menus et liste de courses à chaque modification
   useEffect(() => {
     localStorage.setItem("meals", JSON.stringify(meals));
-  }, [meals]);
+    localStorage.setItem("shoppingList", JSON.stringify(shoppingList));
+  }, [meals, shoppingList]);
 
+  // Gestion des menus
   const handleChange = (day, type, value) => {
     setMeals((prev) => ({
       ...prev,
@@ -26,13 +38,37 @@ export default function MealPlanner() {
     }));
   };
 
+  // Gestion de la liste des courses
+  const addItem = () => {
+    if (newItem.trim() !== "") {
+      setShoppingList((prev) => [...prev, newItem.trim()]);
+      setNewItem("");
+    }
+  };
+
+  const removeItem = (index) => {
+    setShoppingList((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const editItem = (index, value) => {
+    setShoppingList((prev) =>
+      prev.map((item, i) => (i === index ? value : item))
+    );
+  };
+
+  // Bouton partager / copier
   const shareContent = () => {
     let text = "📅 Planning repas\n\n";
     for (const [day, meal] of Object.entries(meals)) {
       text += `${day}: Déj. ${meal.dejeuner} | Dîner ${meal.diner}\n`;
     }
+    text += "\n🛒 Liste des courses:\n";
+    shoppingList.forEach((item) => {
+      text += `- ${item}\n`;
+    });
+
     navigator.clipboard.writeText(text)
-      .then(() => alert("Le planning a été copié dans le presse-papier !"))
+      .then(() => alert("Le planning et la liste ont été copiés !"))
       .catch(() => alert("Impossible de copier dans le presse-papier"));
   };
 
@@ -56,7 +92,31 @@ export default function MealPlanner() {
           />
         </div>
       ))}
-      <button onClick={shareContent}>Copier le planning</button>
+
+      <h2>Liste des courses</h2>
+      <ul>
+        {shoppingList.map((item, index) => (
+          <li key={index}>
+            <input
+              type="text"
+              value={item}
+              onChange={(e) => editItem(index, e.target.value)}
+            />
+            <button onClick={() => removeItem(index)}>Supprimer</button>
+          </li>
+        ))}
+      </ul>
+      <input
+        type="text"
+        placeholder="Nouvel item"
+        value={newItem}
+        onChange={(e) => setNewItem(e.target.value)}
+      />
+      <button onClick={addItem}>Ajouter</button>
+
+      <div style={{ marginTop: "20px" }}>
+        <button onClick={shareContent}>Copier le planning + liste</button>
+      </div>
     </div>
   );
 }
