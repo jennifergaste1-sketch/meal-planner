@@ -1,46 +1,20 @@
 import React, { useState } from "react";
-import MealPlanner from "./MealPlanner";
-import Inventory from "./Inventory";
-import ShoppingList from "./ShoppingList"; // si tu as déjà séparé la liste de courses
+import Menus from "./Menus";
+import ShoppingList from "./ShoppingList";
 
 function App() {
-  const [activeTab, setActiveTab] = useState("planning");
+  const [activeTab, setActiveTab] = useState("menus");
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      {/* Onglets */}
-      <div className="flex mb-4 border-b">
-        <button
-          onClick={() => setActiveTab("planning")}
-          className={`flex-1 py-2 text-center ${
-            activeTab === "planning" ? "border-b-2 border-blue-500 font-bold" : ""
-          }`}
-        >
-          📅 Planning
-        </button>
-        <button
-          onClick={() => setActiveTab("shopping")}
-          className={`flex-1 py-2 text-center ${
-            activeTab === "shopping" ? "border-b-2 border-blue-500 font-bold" : ""
-          }`}
-        >
-          🛒 Courses
-        </button>
-        <button
-          onClick={() => setActiveTab("inventory")}
-          className={`flex-1 py-2 text-center ${
-            activeTab === "inventory" ? "border-b-2 border-blue-500 font-bold" : ""
-          }`}
-        >
-          🍳 Inventaire
-        </button>
-      </div>
+    <div>
+      <nav>
+        <button onClick={() => setActiveTab("menus")}>📅 Menus</button>
+        <button onClick={() => setActiveTab("shopping")}>🛒 Liste de courses</button>
+      </nav>
 
-      {/* Contenu selon l’onglet */}
       <div>
-        {activeTab === "planning" && <MealPlanner />}
+        {activeTab === "menus" && <Menus />}
         {activeTab === "shopping" && <ShoppingList />}
-        {activeTab === "inventory" && <Inventory />}
       </div>
     </div>
   );
