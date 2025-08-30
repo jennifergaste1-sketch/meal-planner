@@ -1,90 +1,122 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { db } from "./firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, doc, getDocs, setDoc } from "firebase/firestore";
 
-const jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-const repas = ["Déjeuner", "Dîner"];
+const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
 
-const MealPlanner = () => {
-  const [menus, setMenus] = useState(
-    jours.reduce((acc, jour) => {
-      acc[jour] = { Déjeuner: "", Dîner: "" };
-      return acc;
-    }, {})
-  );
+// objet local complet par défaut
+const makeEmptyWeek = () =>
+  DAYS.reduce((acc, d) => {
+    acc[d] = { dejeuner: "", diner: "" };
+    return acc;
+  }, {});
 
-  // Charger les menus depuis Firestore
+export default function MealPlanner() {
+  const [meals, setMeals] = useState(makeEmptyWeek());
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const fetchMenus = async () => {
+    const load = async () => {
       try {
-        const ref = doc(db, "mealPlanner", "menus");
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data = snap.data();
+        const col = collection(db, "meals");
+        const snap = await getDocs(col);
 
-          // Vérifie que chaque jour contient bien Déjeuner et Dîner
-          const completeData = jours.reduce((acc, jour) => {
-            acc[jour] = {
-              Déjeuner: data[jour]?.Déjeuner || "",
-              Dîner: data[jour]?.Dîner || "",
-            };
-            return acc;
-          }, {});
-
-          setMenus(completeData);
+        // Si la collection est vide, on la crée (documents par jour)
+        if (snap.empty) {
+          const init = makeEmptyWeek();
+          await Promise.all(
+            DAYS.map((d) => setDoc(doc(db, "meals", d), init[d]))
+          );
+          setMeals(init);
+          setLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error("Erreur de chargement :", error);
+
+        // On reconstruit l'objet semaine en acceptant d'anciennes clés ("déjeuner"/"dîner")
+        const byId = {};
+        snap.forEach((s) => {
+          const data = s.data() || {};
+          byId[s.id] = {
+            dejeuner: data.dejeuner ?? data["déjeuner"] ?? "",
+            diner: data.diner ?? data["dîner"] ?? "",
+          };
+        });
+
+        const merged = makeEmptyWeek();
+        DAYS.forEach((d) => {
+          if (byId[d]) merged[d] = byId[d];
+        });
+
+        setMeals(merged);
+      } catch (e) {
+        console.error("Erreur Firestore:", e);
+        // on garde l'affichage local quand même
+        setMeals((m) => ({ ...m }));
+      } finally {
+        setLoading(false);
       }
     };
-    fetchMenus();
+    load();
   }, []);
 
-  // Sauvegarde automatique quand on modifie un champ
-  const handleChange = async (jour, r, value) => {
-    const updatedMenus = {
-      ...menus,
-      [jour]: { ...menus[jour], [r]: value },
-    };
-    setMenus(updatedMenus);
-
-    const ref = doc(db, "mealPlanner", "menus");
-    await setDoc(ref, updatedMenus);
+  const saveDay = async (day, next) => {
+    setMeals((prev) => ({ ...prev, [day]: next }));
+    // On écrit avec des clés sans accent pour éviter les soucis
+    await setDoc(doc(db, "meals", day), {
+      dejeuner: next.dejeuner || "",
+      diner: next.diner || "",
+    });
   };
 
+  const handleChange = (day, key, value) => {
+    const next = { ...meals[day], [key]: value };
+    saveDay(day, next);
+  };
+
+  if (loading) return <div className="p-4">Chargement…</div>;
+
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Planificateur de menus</h2>
-      <table className="w-full border-collapse border">
-        <thead>
-          <tr>
-            <th className="border p-2">Jour</th>
-            {repas.map((r) => (
-              <th key={r} className="border p-2">{r}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {jours.map((jour) => (
-            <tr key={jour}>
-              <td className="border p-2 font-semibold">{jour}</td>
-              {repas.map((r) => (
-                <td key={r} className="border p-2">
-                  <input
-                    type="text"
-                    value={menus[jour][r]}
-                    onChange={(e) => handleChange(jour, r, e.target.value)}
-                    className="w-full border p-1"
-                    placeholder={`Ajouter ${r}`}
-                  />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: 16 }}>
+      <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 12 }}>
+        Planning des repas
+      </h2>
+
+      {DAYS.map((day) => (
+        <div
+          key={day}
+          style={{
+            marginBottom: 16,
+            padding: 12,
+            border: "1px solid #ddd",
+            borderRadius: 12,
+            background: "#fff",
+          }}
+        >
+          <h3 style={{ margin: 0, marginBottom: 8 }}>{day}</h3>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+            <label style={{ minWidth: 80 }}>Déjeuner =</label>
+            <input
+              type="text"
+              value={meals[day]?.dejeuner ?? ""}
+              onChange={(e) => handleChange(day, "dejeuner", e.target.value)}
+              style={{ flex: 1, border: "1px solid #ccc", borderRadius: 8, padding: 8 }}
+              placeholder="Ex : Pâtes bolo"
+            />
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+            <label style={{ minWidth: 80 }}>Dîner =</label>
+            <input
+              type="text"
+              value={meals[day]?.diner ?? ""}
+              onChange={(e) => handleChange(day, "diner", e.target.value)}
+              style={{ flex: 1, border: "1px solid #ccc", borderRadius: 8, padding: 8 }}
+              placeholder="Ex : Salade composée"
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
-};
-
-export default MealPlanner;
+}

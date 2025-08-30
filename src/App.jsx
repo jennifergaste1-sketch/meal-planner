@@ -1,21 +1,11 @@
-import React, { useState } from "react";
-import Menus from "./Menus";
-import ShoppingList from "./ShoppingList";
+import React from "react";
+import MealPlanner from "./MealPlanner";
 
 function App() {
-  const [activeTab, setActiveTab] = useState("menus");
-
   return (
     <div>
-      <nav>
-        <button onClick={() => setActiveTab("menus")}>📅 Menus</button>
-        <button onClick={() => setActiveTab("shopping")}>🛒 Liste de courses</button>
-      </nav>
-
-      <div>
-        {activeTab === "menus" && <Menus />}
-        {activeTab === "shopping" && <ShoppingList />}
-      </div>
+      <h1>Mon Planificateur de Repas</h1>
+      <MealPlanner />
     </div>
   );
 }
